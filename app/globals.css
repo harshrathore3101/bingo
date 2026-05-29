@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Global neon / dark theme base styles                               */
+/* ------------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  /* Deep dark gradient background for the neon gaming look */
+  background:
+    radial-gradient(ellipse at top, #1b0b3b 0%, #0a0a1a 55%, #050509 100%);
+  min-height: 100vh;
+  color: #e8e8ff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Reusable glassmorphism surface */
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* Custom scrollbar to match the theme */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #9d4edd80;
+  border-radius: 8px;
+}
