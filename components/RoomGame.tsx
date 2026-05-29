@@ -137,14 +137,35 @@ export default function RoomGame({ code }: { code: string }) {
 
       <BingoHeader earned={earned} />
 
-      {/* Not joined yet → name gate */}
+      {/* Not joined yet → name gate (only from the lobby). Once the game has
+          started the room is locked, so newcomers see a waiting screen until
+          it returns to the lobby for the next round. */}
       {!me ? (
-        <JoinRoom
-          code={code}
-          defaultName={savedName}
-          playerCount={state.players.length}
-          onJoin={join}
-        />
+        state.phase === "lobby" ? (
+          <JoinRoom
+            code={code}
+            defaultName={savedName}
+            playerCount={state.players.length}
+            onJoin={join}
+          />
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass rounded-2xl p-6 w-full max-w-sm flex flex-col items-center gap-3 text-center"
+          >
+            <div className="text-4xl">🔒</div>
+            <h2 className="text-xl font-bold text-neon-pink">Game in progress</h2>
+            <p className="text-cyan-200/80 text-sm">
+              This room has already started, so you can&apos;t join right now.
+              Hang tight — you&apos;ll be able to join when the current round
+              finishes and players return to the lobby.
+            </p>
+            <Link href="/" className="text-neon-blue underline text-sm mt-1">
+              Pick another room
+            </Link>
+          </motion.div>
+        )
       ) : (
         <>
           {/* Status / controls row */}

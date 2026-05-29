@@ -69,16 +69,24 @@ export function playerLineCount(state: GameState, playerId: string): number {
 export function addPlayer(state: GameState, id: string, name: string): GameState {
   const existing = state.players.find((p) => p.id === id);
   if (existing) {
+    // Already in the room (e.g. rejoin after refresh) — just update the name.
     return {
       ...state,
       players: state.players.map((p) => (p.id === id ? { ...p, name } : p)),
     };
   }
-  // New players always get a fresh card so they can join even mid-game.
+  // New players can only join from the lobby — once the game has started the
+  // room is locked until it returns to the lobby for the next round.
+  if (state.phase !== "lobby") return state;
   return {
     ...state,
     players: [...state.players, { id, name, card: generateCard() }],
   };
+}
+
+/** Whether a new (not-yet-joined) player may enter the room right now. */
+export function canJoin(state: GameState): boolean {
+  return state.phase === "lobby";
 }
 
 /** Begin a round: deal fresh cards to everyone and reset calls/turn. */

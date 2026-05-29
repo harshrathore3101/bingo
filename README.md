@@ -111,8 +111,10 @@ npm start
 Players who open the **same room number** play together in real time:
 
 1. **Join with a name** — every player picks a display name.
-2. **Lobby** — players gather; anyone can press **Start**. Each player is dealt
-   their **own** shuffled 1–25 card.
+2. **Lobby** — players gather and wait; anyone can press **Start**, which deals
+   each player their **own** shuffled 1–25 card. Once started the room is
+   **locked** — newcomers can't join an in-progress game and instead wait for
+   the next round (when players return to the lobby).
 3. **Chance by chance** — on your turn you tap a number on your card to **call**
    it. That number is marked on **every** player's card. The turn rotates.
 4. **Live attribution** — a "Called" log shows **who called which number**, and
