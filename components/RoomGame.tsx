@@ -12,9 +12,11 @@ import JoinRoom from "./JoinRoom";
 import PlayerList from "./PlayerList";
 import CalledLog from "./CalledLog";
 import TurnBanner from "./TurnBanner";
+import ChatPanel from "./ChatPanel";
 
 import { useRoom } from "@/hooks/useRoom";
-import { calledSet, leaderboard } from "@/lib/game";
+import { useChat } from "@/hooks/useChat";
+import { calledSet, leaderboard, callNumber } from "@/lib/game";
 import {
   cellsFromCard,
   detectCompletedLines,
@@ -69,6 +71,54 @@ export default function RoomGame({ code }: { code: string }) {
       setTimeout(() => setCopied(false), 1500);
     });
   }, []);
+
+  // --- Chat + BingoBot ----------------------------------------------------
+  // Stable author identity for the chat hook.
+  const author = useMemo(
+    () => (me ? { id: clientId, name: me.name } : null),
+    [clientId, me?.name] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const chat = useChat(code, author);
+
+  // The client that performs an action also posts the matching BingoBot
+  // message — so game events appear exactly once (no cross-client duplicates).
+  const handleJoin = useCallback(
+    async (name: string) => {
+      await join(name);
+      chat.postBot(`${name} joined the room 👋`);
+    },
+    [join, chat]
+  );
+
+  const handleStart = useCallback(() => {
+    start();
+    chat.postBot(`🎮 ${me?.name ?? "Someone"} started the game — cards dealt!`);
+  }, [start, chat, me?.name]);
+
+  const handleCall = useCallback(
+    (value: number) => {
+      if (!state || !me) return;
+      // Inspect the (pure) outcome locally to know what to announce.
+      const next = callNumber(state, value, clientId);
+      if (next === state) return; // not your turn / already called — no-op
+      call(value);
+      chat.postBot(`${me.name} called ${value}`);
+      if (next.phase === "finished" && next.winnerName) {
+        chat.postBot(`🏆 ${next.winnerName} wins — GG! 🎉`);
+      }
+    },
+    [state, me, clientId, call, chat]
+  );
+
+  const handlePlayAgain = useCallback(() => {
+    playAgain();
+    chat.postBot(`🔄 New round! Good luck everyone.`);
+  }, [playAgain, chat]);
+
+  const handleLobby = useCallback(() => {
+    backToLobby();
+    chat.postBot(`↩️ Back to the lobby.`);
+  }, [backToLobby, chat]);
 
   // --- Derived view state (only meaningful once joined) ------------------
   const called = useMemo(() => (state ? calledSet(state) : new Set<number>()), [state]);
@@ -146,7 +196,7 @@ export default function RoomGame({ code }: { code: string }) {
             code={code}
             defaultName={savedName}
             playerCount={state.players.length}
-            onJoin={join}
+            onJoin={handleJoin}
           />
         ) : (
           <motion.div
@@ -176,7 +226,7 @@ export default function RoomGame({ code }: { code: string }) {
                 <span className="text-neon-blue font-semibold">{code}</span> with
                 friends, then start when everyone's in.
               </p>
-              <NeonBtn color="green" onClick={start}>
+              <NeonBtn color="green" onClick={handleStart}>
                 ▶ Start Game
               </NeonBtn>
               {state.players.length < 2 && (
@@ -200,11 +250,17 @@ export default function RoomGame({ code }: { code: string }) {
               canCall={isMyTurn && state.phase === "playing"}
               callerByValue={callerByValue}
               lastCalled={lastCalled}
-              onCall={call}
+              onCall={handleCall}
             />
             <div className="flex flex-col sm:flex-row lg:flex-col gap-4 w-full lg:w-auto">
               <PlayerList state={state} meId={clientId} currentId={current?.id ?? null} />
               <CalledLog called={state.called} />
+              <ChatPanel
+                messages={chat.messages}
+                meId={clientId}
+                canChat={Boolean(me)}
+                onSend={chat.send}
+              />
             </div>
           </div>
         </>
@@ -216,8 +272,8 @@ export default function RoomGame({ code }: { code: string }) {
         isMe={state.winnerId === clientId}
         leaderboard={leaderboard(state)}
         meId={clientId}
-        onPlayAgain={playAgain}
-        onLobby={backToLobby}
+        onPlayAgain={handlePlayAgain}
+        onLobby={handleLobby}
       />
     </main>
   );

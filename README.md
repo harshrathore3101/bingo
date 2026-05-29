@@ -17,6 +17,7 @@ A real-time **multiplayer** game: join a room, take turns calling numbers, and r
 - Each completed line lights a **BINGO** letter; winning lines highlighted
 - **First to 5 lines wins** — winner announced on every screen + confetti + leaderboard
 - **Presence** ("N online") and a shareable room link
+- **In-room chat** + a **🤖 BingoBot** that announces joins, calls, and the winner
 - Neon / glassmorphism dark theme, fully **responsive**, **Framer Motion** animations
 
 ---
@@ -37,12 +38,14 @@ bingo/
 │   ├── PlayerList.tsx         # Roster + line progress + turn glow + winner
 │   ├── CalledLog.tsx          # History of who called which number
 │   ├── TurnBanner.tsx         # "Your turn" / "Waiting for X"
+│   ├── ChatPanel.tsx          # In-room chat + BingoBot messages
 │   ├── BingoBoard.tsx         # A player's 5×5 card
 │   ├── BingoCell.tsx          # Single number (callable / called / caller badge)
 │   ├── BingoHeader.tsx        # Animated "B I N G O" title (your letters)
 │   └── WinModal.tsx           # Winner announcement + leaderboard
 ├── hooks/
-│   └── useRoom.ts             # Realtime room sync + identity + presence
+│   ├── useRoom.ts             # Realtime room sync + identity + presence
+│   └── useChat.ts             # Realtime chat (messages table) + BingoBot
 ├── lib/
 │   ├── bingo.ts               # Pure board/line/card utilities
 │   ├── game.ts                # GameState + turn-based reducers
@@ -123,7 +126,9 @@ Players who open the **same room number** play together in real time:
    confetti and a final leaderboard.
 
 Extras: per-player line-progress bars + turn glow in the roster, live
-"players online" presence count, and a shareable room link.
+"players online" presence count, a shareable room link, and an **in-room
+chat** where players message each other and a **🤖 BingoBot** posts game
+events (joins, calls, the winner).
 
 - Lobby: `/` — enter or create a room number
 - Game: `/room/<number>` — shareable link
@@ -157,6 +162,25 @@ create policy "rooms_update" on public.rooms for update using (true);
 
 -- Broadcast row changes to all subscribers in real time
 alter publication supabase_realtime add table public.rooms;
+
+-- ── In-room chat (player messages + BingoBot game events) ──────────────
+create table if not exists public.messages (
+  id         uuid primary key default gen_random_uuid(),
+  room       text not null,                 -- room code
+  author     text not null,                 -- display name, or "BingoBot"
+  author_id  text not null,                 -- player id, or "bot"
+  kind       text not null default 'user',  -- 'user' | 'bot'
+  text       text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists messages_room_created_idx
+  on public.messages (room, created_at);
+
+alter table public.messages enable row level security;
+create policy "messages_select" on public.messages for select using (true);
+create policy "messages_insert" on public.messages for insert with check (true);
+
+alter publication supabase_realtime add table public.messages;
 ```
 
 > The permissive policies above are fine for a casual game. Tighten them if you

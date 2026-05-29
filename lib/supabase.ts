@@ -35,3 +35,22 @@ export interface RoomRow {
 }
 
 export const ROOMS_TABLE = "rooms";
+
+/**
+ * A chat message in a room. Stored in its own table (not the game-state row)
+ * so concurrent messages are independent INSERTs that never overwrite each
+ * other. `kind: "bot"` marks automated BingoBot game-event messages.
+ */
+export interface ChatMessage {
+  id: string;
+  room: string;
+  author: string; // display name, or "BingoBot"
+  author_id: string; // player id, or "bot"
+  kind: "user" | "bot";
+  text: string;
+  created_at: string;
+}
+
+export const MESSAGES_TABLE = "messages";
+export const BOT_ID = "bot";
+export const BOT_NAME = "BingoBot";
