@@ -52,16 +52,19 @@ export default function PlayerList({ state, meId, currentId }: PlayerListProps) 
                   {p.name}
                   {isMe && <span className="text-white/40 font-normal"> (you)</span>}
                 </p>
-                {/* Line progress dots */}
-                <div className="flex gap-1 mt-0.5">
-                  {Array.from({ length: LINES_TO_WIN }).map((_, i) => (
-                    <span
-                      key={i}
-                      className="h-1.5 w-4 rounded-full"
-                      style={{ background: i < lines ? color : "rgba(255,255,255,0.12)" }}
-                    />
-                  ))}
-                </div>
+                {/* Line progress is private — only shown for your own row, so
+                    you can't see how close opponents are to winning. */}
+                {isMe && (
+                  <div className="flex gap-1 mt-0.5">
+                    {Array.from({ length: LINES_TO_WIN }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="h-1.5 w-4 rounded-full"
+                        style={{ background: i < lines ? color : "rgba(255,255,255,0.12)" }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {isWinner && <span title="Winner">👑</span>}
