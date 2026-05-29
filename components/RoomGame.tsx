@@ -46,7 +46,6 @@ export default function RoomGame({ code }: { code: string }) {
     join,
     start,
     call,
-    skip,
     playAgain,
     backToLobby,
   } = room;
@@ -168,16 +167,7 @@ export default function RoomGame({ code }: { code: string }) {
           )}
 
           {state.phase === "playing" && (
-            <div className="flex flex-col items-center gap-3">
-              <TurnBanner current={current} isMyTurn={isMyTurn} />
-              <button
-                onClick={skip}
-                className="text-xs text-white/50 hover:text-white underline"
-                title="Use if a player is away"
-              >
-                Skip {current?.name}&apos;s turn
-              </button>
-            </div>
+            <TurnBanner current={current} isMyTurn={isMyTurn} />
           )}
 
           {/* Board + side panels */}

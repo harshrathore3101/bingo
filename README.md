@@ -16,7 +16,7 @@ A real-time **multiplayer** game: join a room, take turns calling numbers, and r
 - Live **roster** with per-player line progress and a glowing turn indicator
 - Each completed line lights a **BINGO** letter; winning lines highlighted
 - **First to 5 lines wins** — winner announced on every screen + confetti + leaderboard
-- **Presence** ("N online"), shareable link, and a **Skip turn** safety button
+- **Presence** ("N online") and a shareable room link
 - Neon / glassmorphism dark theme, fully **responsive**, **Framer Motion** animations
 
 ---
@@ -121,8 +121,7 @@ Players who open the **same room number** play together in real time:
    confetti and a final leaderboard.
 
 Extras: per-player line-progress bars + turn glow in the roster, live
-"players online" presence count, shareable room link, and a **Skip turn**
-button in case a player goes AFK.
+"players online" presence count, and a shareable room link.
 
 - Lobby: `/` — enter or create a room number
 - Game: `/room/<number>` — shareable link

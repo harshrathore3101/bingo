@@ -9,7 +9,6 @@ import {
   addPlayer,
   startGame,
   callNumber,
-  skipTurn,
   resetToLobby,
   currentPlayer,
 } from "@/lib/game";
@@ -48,7 +47,6 @@ export interface UseRoom {
   join: (name: string) => Promise<void>;
   start: () => void;
   call: (value: number) => void;
-  skip: () => void;
   playAgain: () => void;
   backToLobby: () => void;
 }
@@ -199,7 +197,6 @@ export function useRoom(code: string): UseRoom {
     (value: number) => apply((s) => callNumber(s, value, getClientId())),
     [apply]
   );
-  const skip = useCallback(() => apply(skipTurn), [apply]);
   const playAgain = useCallback(() => apply(startGame), [apply]);
   const backToLobby = useCallback(() => apply(resetToLobby), [apply]);
 
@@ -220,7 +217,6 @@ export function useRoom(code: string): UseRoom {
     join,
     start,
     call,
-    skip,
     playAgain,
     backToLobby,
   };

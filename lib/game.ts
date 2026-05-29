@@ -129,12 +129,6 @@ export function callNumber(state: GameState, value: number, byId: string): GameS
   return { ...state, called, turn: (state.turn + 1) % state.players.length };
 }
 
-/** Skip the current turn (used if a player is offline/AFK). */
-export function skipTurn(state: GameState): GameState {
-  if (state.phase !== "playing" || state.players.length === 0) return state;
-  return { ...state, turn: (state.turn + 1) % state.players.length };
-}
-
 /** Back to the lobby (keeps the roster, deals fresh cards). */
 export function resetToLobby(state: GameState): GameState {
   return {
