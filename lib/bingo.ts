@@ -79,9 +79,12 @@ export const WINNING_LINES: number[][] = (() => {
  * completed line is never counted toward BINGO twice.
  */
 export function detectCompletedLines(cells: Cell[]): number[] {
+  // Guard against an incomplete/empty board (e.g. before a player has joined
+  // and been dealt a card) — `cells[idx]` may be undefined.
+  if (cells.length < TOTAL_CELLS) return [];
   const completed: number[] = [];
   WINNING_LINES.forEach((line, i) => {
-    if (line.every((idx) => cells[idx].marked)) completed.push(i);
+    if (line.every((idx) => cells[idx]?.marked)) completed.push(i);
   });
   return completed;
 }
