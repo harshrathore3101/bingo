@@ -110,3 +110,32 @@ export function highlightedCells(completedLineIndices: number[]): Set<number> {
   });
   return set;
 }
+
+// ---------------------------------------------------------------------------
+// Per-player cards (classic turn-based Bingo)
+// In the multiplayer game each player gets their OWN card: the same numbers
+// 1–25, but shuffled into a different layout. A "called" number is marked on
+// every card, so different layouts complete lines at different times.
+// ---------------------------------------------------------------------------
+
+/** A player's card: the numbers 1–25 shuffled into 25 positions. */
+export function generateCard(): number[] {
+  return pickUnique(1, 25, TOTAL_CELLS);
+}
+
+/**
+ * Build display cells for a card given the set of called numbers.
+ * A cell is marked iff its number has been called.
+ */
+export function cellsFromCard(card: number[], called: Set<number>): Cell[] {
+  return card.map((value) => ({
+    value,
+    isFree: false,
+    marked: called.has(value),
+  }));
+}
+
+/** Number of completed lines on a card given the called numbers. */
+export function cardLineCount(card: number[], called: Set<number>): number {
+  return detectCompletedLines(cellsFromCard(card, called)).length;
+}

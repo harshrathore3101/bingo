@@ -5,7 +5,7 @@
 // exposed to the browser and is gated by Row Level Security policies).
 // ---------------------------------------------------------------------------
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { Cell } from "./bingo";
+import type { GameState } from "./game";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Accept either the legacy "anon" key or the newer "publishable" key
@@ -27,11 +27,10 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
     })
   : null;
 
-/** Shape of a row in the `rooms` table. */
+/** Shape of a row in the `rooms` table. The whole game lives in `state`. */
 export interface RoomRow {
   id: string; // room code (e.g. "1234")
-  cells: Cell[]; // shared board state (jsonb)
-  started: boolean;
+  state: GameState; // full game state (jsonb)
   updated_at: string;
 }
 

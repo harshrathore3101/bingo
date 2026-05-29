@@ -2,54 +2,79 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, isSupabaseConfigured, ROOMS_TABLE, RoomRow } from "@/lib/supabase";
-import { Cell, generateBoard } from "@/lib/bingo";
+import {
+  GameState,
+  Player,
+  initialState,
+  addPlayer,
+  startGame,
+  callNumber,
+  skipTurn,
+  resetToLobby,
+  currentPlayer,
+} from "@/lib/game";
+
+const CLIENT_ID_KEY = "bingo-client-id";
+const NAME_KEY = "bingo-player-name";
+
+/** A stable per-browser id so refresh keeps the same player identity. */
+function getClientId(): string {
+  let id = localStorage.getItem(CLIENT_ID_KEY);
+  if (!id) {
+    id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem(CLIENT_ID_KEY, id);
+  }
+  return id;
+}
 
 export interface UseRoom {
-  cells: Cell[] | null;
-  started: boolean;
+  state: GameState | null;
   loading: boolean;
   error: string | null;
-  /** Number of players currently connected to this room (via presence). */
-  players: number;
-  toggle: (index: number) => void;
+  clientId: string;
+  /** This client's player record, if they've joined. */
+  me: Player | null;
+  /** Whether it's this client's turn to call a number. */
+  isMyTurn: boolean;
+  /** The player whose turn it is. */
+  current: Player | null;
+  /** Number of clients currently connected (presence). */
+  online: number;
+  /** Remembered name to prefill the join form. */
+  savedName: string;
+  join: (name: string) => Promise<void>;
   start: () => void;
-  generate: () => void;
-  restart: () => void;
+  call: (value: number) => void;
+  skip: () => void;
+  playAgain: () => void;
+  backToLobby: () => void;
 }
 
 /**
- * Connects to a single room and keeps its board in sync across every client.
+ * Connects to one room and keeps the full turn-based game state in sync across
+ * every client via Supabase Realtime.
  *
- * How it works:
- *  1. On mount we read the room row from the `rooms` table (creating it with a
- *     fresh board if it doesn't exist yet).
- *  2. We subscribe to Postgres change events for that row — whenever ANY player
- *     updates the board, Supabase Realtime pushes the new row to everyone, so
- *     each client re-renders with the shared state.
- *  3. Local actions (toggle/start/generate/restart) update state optimistically
- *     and write the full board back to the row; the realtime echo keeps all
- *     other clients in sync.
- *  4. A presence channel tracks how many players are connected.
+ *  - On mount: read (or create) the room row, then subscribe to row changes.
+ *  - Mutations apply a pure reducer to the latest state and write it back; the
+ *    realtime echo updates everyone. Turn-based play means writes are largely
+ *    serialized, so races are rare.
+ *  - `join` does a fresh DB read first so concurrent joins don't clobber each
+ *    other (read-modify-write).
+ *  - A presence channel reports how many clients are connected.
  */
 export function useRoom(code: string): UseRoom {
-  const [cells, setCells] = useState<Cell[] | null>(null);
-  const [started, setStarted] = useState(false);
+  const [state, setState] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [players, setPlayers] = useState(1);
+  const [online, setOnline] = useState(1);
+  const [clientId, setClientId] = useState("");
+  const [savedName, setSavedName] = useState("");
 
-  // Refs hold the latest values so action callbacks (created once) never read
-  // stale state when building the next board to persist.
-  const cellsRef = useRef<Cell[] | null>(null);
-  const startedRef = useRef(false);
-  cellsRef.current = cells;
-  startedRef.current = started;
-
-  /** Apply a row received from the database / realtime to local state. */
-  const applyRow = useCallback((row: Pick<RoomRow, "cells" | "started">) => {
-    setCells(row.cells);
-    setStarted(row.started);
-  }, []);
+  const stateRef = useRef<GameState | null>(null);
+  stateRef.current = state;
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -58,13 +83,16 @@ export function useRoom(code: string): UseRoom {
       return;
     }
 
+    const id = getClientId();
+    setClientId(id);
+    setSavedName(localStorage.getItem(NAME_KEY) ?? "");
+
     let cancelled = false;
 
-    // --- Step 1 & 2: load (or create) the room, then subscribe ----------
     async function init() {
       const { data, error: selErr } = await supabase!
         .from(ROOMS_TABLE)
-        .select("cells, started")
+        .select("state")
         .eq("id", code)
         .maybeSingle();
 
@@ -75,26 +103,25 @@ export function useRoom(code: string): UseRoom {
         return;
       }
 
-      if (data) {
-        applyRow(data as RoomRow);
+      if (data?.state) {
+        setState(data.state as GameState);
       } else {
-        // Room doesn't exist — create it with a fresh board.
-        const fresh = generateBoard();
+        // Create the room with an empty lobby.
+        const fresh = initialState();
         const { error: insErr } = await supabase!
           .from(ROOMS_TABLE)
-          .insert({ id: code, cells: fresh, started: false });
-
+          .insert({ id: code, state: fresh });
         if (cancelled) return;
         if (insErr) {
-          // Likely a race: another player created it first. Re-read.
+          // Race: someone created it first — re-read.
           const { data: again } = await supabase!
             .from(ROOMS_TABLE)
-            .select("cells, started")
+            .select("state")
             .eq("id", code)
             .maybeSingle();
-          if (again && !cancelled) applyRow(again as RoomRow);
+          if (again?.state && !cancelled) setState(again.state as GameState);
         } else {
-          applyRow({ cells: fresh, started: false });
+          setState(fresh);
         }
       }
       if (!cancelled) setLoading(false);
@@ -102,83 +129,99 @@ export function useRoom(code: string): UseRoom {
 
     init();
 
-    // Realtime: listen for board updates + track presence (player count).
     const channel = supabase
-      .channel(`room:${code}`, {
-        config: { presence: { key: Math.random().toString(36).slice(2) } },
-      })
+      .channel(`room:${code}`, { config: { presence: { key: id } } })
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: ROOMS_TABLE, filter: `id=eq.${code}` },
         (payload) => {
           const row = payload.new as RoomRow | undefined;
-          if (row?.cells) applyRow(row);
+          if (row?.state) setState(row.state);
         }
       )
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        setPlayers(Object.keys(state).length || 1);
+        setOnline(Object.keys(channel.presenceState()).length || 1);
       })
       .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({ online_at: new Date().toISOString() });
-        }
+        if (status === "SUBSCRIBED") await channel.track({ at: Date.now() });
       });
 
     return () => {
       cancelled = true;
       supabase!.removeChannel(channel);
     };
-  }, [code, applyRow]);
+  }, [code]);
 
-  /** Write the full board (and started flag) back to the room row. */
-  const persist = useCallback(
-    async (nextCells: Cell[], nextStarted: boolean) => {
-      // Optimistic local update for instant feedback.
-      setCells(nextCells);
-      setStarted(nextStarted);
+  /** Apply a reducer to the latest state and persist it. */
+  const apply = useCallback(
+    async (reducer: (s: GameState) => GameState) => {
       if (!supabase) return;
+      const base = stateRef.current ?? initialState();
+      const next = reducer(base);
+      if (next === base) return; // reducer no-op (e.g. not your turn)
+      setState(next); // optimistic
       const { error: upErr } = await supabase
         .from(ROOMS_TABLE)
-        .update({
-          cells: nextCells,
-          started: nextStarted,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ state: next, updated_at: new Date().toISOString() })
         .eq("id", code);
       if (upErr) setError(upErr.message);
     },
     [code]
   );
 
-  // --- Actions (stable identities; read latest state via refs) ----------
-  const toggle = useCallback(
-    (index: number) => {
-      const current = cellsRef.current;
-      if (!current) return;
-      const cell = current[index];
-      if (cell.isFree) return; // FREE space (if enabled) isn't toggleable
-      const next = current.map((c, i) =>
-        i === index ? { ...c, marked: !c.marked } : c
-      );
-      persist(next, startedRef.current);
+  const join = useCallback(
+    async (name: string) => {
+      if (!supabase) return;
+      const trimmed = name.trim().slice(0, 16) || "Player";
+      localStorage.setItem(NAME_KEY, trimmed);
+      setSavedName(trimmed);
+      const id = getClientId();
+
+      // Fresh read so simultaneous joins don't overwrite each other.
+      const { data } = await supabase
+        .from(ROOMS_TABLE)
+        .select("state")
+        .eq("id", code)
+        .maybeSingle();
+      const base = (data?.state as GameState) ?? stateRef.current ?? initialState();
+      const next = addPlayer(base, id, trimmed);
+      setState(next);
+      const { error: upErr } = await supabase
+        .from(ROOMS_TABLE)
+        .upsert({ id: code, state: next, updated_at: new Date().toISOString() });
+      if (upErr) setError(upErr.message);
     },
-    [persist]
+    [code]
   );
 
-  const start = useCallback(() => {
-    if (cellsRef.current) persist(cellsRef.current, true);
-  }, [persist]);
+  const start = useCallback(() => apply(startGame), [apply]);
+  const call = useCallback(
+    (value: number) => apply((s) => callNumber(s, value, getClientId())),
+    [apply]
+  );
+  const skip = useCallback(() => apply(skipTurn), [apply]);
+  const playAgain = useCallback(() => apply(startGame), [apply]);
+  const backToLobby = useCallback(() => apply(resetToLobby), [apply]);
 
-  // New board for everyone in the room; keeps the game running.
-  const generate = useCallback(() => {
-    persist(generateBoard(), startedRef.current);
-  }, [persist]);
+  const me = state?.players.find((p) => p.id === clientId) ?? null;
+  const current = state ? currentPlayer(state) : null;
+  const isMyTurn = Boolean(current && clientId && current.id === clientId);
 
-  // Full reset for the whole room: new board, back to pre-start.
-  const restart = useCallback(() => {
-    persist(generateBoard(), false);
-  }, [persist]);
-
-  return { cells, started, loading, error, players, toggle, start, generate, restart };
+  return {
+    state,
+    loading,
+    error,
+    clientId,
+    me,
+    isMyTurn,
+    current,
+    online,
+    savedName,
+    join,
+    start,
+    call,
+    skip,
+    playAgain,
+    backToLobby,
+  };
 }
