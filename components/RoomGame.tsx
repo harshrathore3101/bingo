@@ -167,27 +167,31 @@ export default function RoomGame({ code }: { code: string }) {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden flex flex-col items-center gap-5 px-4 py-8">
-      <Blobs />
+    <div className="relative min-h-screen">
+      {/* Sticky top room bar — stays pinned at the top while you scroll */}
+      <header className="sticky top-0 z-40 w-full bg-black/50 backdrop-blur-md border-b border-white/10">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
+          <span className="text-cyan-200/80">
+            Room <span className="text-neon-blue font-bold tracking-widest">{code}</span>
+          </span>
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 text-neon-green">
+              <span className="h-2 w-2 rounded-full bg-neon-green animate-pulse" />
+              {online} online
+            </span>
+            <button onClick={copyLink} className="text-neon-pink hover:underline">
+              {copied ? "Copied!" : "Share"}
+            </button>
+            <Link href="/" className="text-white/70 hover:text-white">
+              Leave
+            </Link>
+          </div>
+        </div>
+      </header>
 
-      {/* Room bar */}
-      <div className="glass rounded-xl px-4 py-2 flex items-center gap-4 text-sm flex-wrap justify-center">
-        <span className="text-cyan-200/80">
-          Room <span className="text-neon-blue font-bold tracking-widest">{code}</span>
-        </span>
-        <span className="flex items-center gap-1 text-neon-green">
-          <span className="h-2 w-2 rounded-full bg-neon-green animate-pulse" />
-          {online} online
-        </span>
-        <button onClick={copyLink} className="text-neon-pink hover:underline">
-          {copied ? "Copied!" : "Share"}
-        </button>
-        <Link href="/" className="text-white/50 hover:text-white">
-          Leave
-        </Link>
-      </div>
-
-      <BingoHeader earned={earned} />
+      <main className="relative overflow-hidden flex flex-col items-center gap-5 px-4 pb-10 pt-6">
+        <Blobs />
+        <BingoHeader earned={earned} />
 
       {/* Not joined yet → name gate (only from the lobby). Once the game has
           started the room is locked, so newcomers see a waiting screen until
@@ -276,7 +280,8 @@ export default function RoomGame({ code }: { code: string }) {
         onPlayAgain={handlePlayAgain}
         onLobby={handleLobby}
       />
-    </main>
+      </main>
+    </div>
   );
 }
 
