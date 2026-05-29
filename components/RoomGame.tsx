@@ -159,6 +159,9 @@ export default function RoomGame({ code }: { code: string }) {
       <Centered>
         <Spinner />
         <p className="mt-4 text-cyan-200/80">Joining room {code}…</p>
+        <Link href="/" className="mt-4 text-neon-blue underline text-sm">
+          Leave
+        </Link>
       </Centered>
     );
   }

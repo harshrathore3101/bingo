@@ -45,6 +45,58 @@ export function initialState(): GameState {
   };
 }
 
+function isValidCard(card: unknown): card is number[] {
+  return Array.isArray(card) && card.length === 25 && card.every((n) => typeof n === "number");
+}
+
+/**
+ * Coerce an arbitrary persisted value into a valid GameState. Guards against
+ * rooms created by older versions (or otherwise malformed jsonb) so a bad row
+ * can never crash the client — missing/invalid fields fall back to safe
+ * defaults, and invalid cards are regenerated.
+ */
+export function normalizeState(raw: unknown): GameState {
+  if (!raw || typeof raw !== "object") return initialState();
+  const r = raw as Record<string, unknown>;
+
+  const phase: Phase = (["lobby", "playing", "finished"] as const).includes(
+    r.phase as Phase
+  )
+    ? (r.phase as Phase)
+    : "lobby";
+
+  const players: Player[] = Array.isArray(r.players)
+    ? (r.players as unknown[])
+        .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
+        .filter((p) => typeof p.id === "string")
+        .map((p) => ({
+          id: p.id as string,
+          name: typeof p.name === "string" ? p.name : "Player",
+          card: isValidCard(p.card) ? (p.card as number[]) : generateCard(),
+        }))
+    : [];
+
+  const called: Call[] = Array.isArray(r.called)
+    ? (r.called as unknown[])
+        .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+        .filter((c) => typeof c.value === "number")
+        .map((c) => ({
+          value: c.value as number,
+          by: typeof c.by === "string" ? c.by : "",
+          byName: typeof c.byName === "string" ? c.byName : "?",
+        }))
+    : [];
+
+  return {
+    phase,
+    players,
+    turn: typeof r.turn === "number" ? r.turn : 0,
+    called,
+    winnerId: typeof r.winnerId === "string" ? r.winnerId : null,
+    winnerName: typeof r.winnerName === "string" ? r.winnerName : null,
+  };
+}
+
 /** Set of numbers that have been called (for marking cards). */
 export function calledSet(state: GameState): Set<number> {
   return new Set(state.called.map((c) => c.value));

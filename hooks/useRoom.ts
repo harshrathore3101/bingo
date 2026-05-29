@@ -11,6 +11,7 @@ import {
   callNumber,
   resetToLobby,
   currentPlayer,
+  normalizeState,
 } from "@/lib/game";
 
 const CLIENT_ID_KEY = "bingo-client-id";
@@ -102,7 +103,7 @@ export function useRoom(code: string): UseRoom {
       }
 
       if (data?.state) {
-        setState(data.state as GameState);
+        setState(normalizeState(data.state));
       } else {
         // Create the room with an empty lobby.
         const fresh = initialState();
@@ -117,7 +118,7 @@ export function useRoom(code: string): UseRoom {
             .select("state")
             .eq("id", code)
             .maybeSingle();
-          if (again?.state && !cancelled) setState(again.state as GameState);
+          if (again?.state && !cancelled) setState(normalizeState(again.state));
         } else {
           setState(fresh);
         }
@@ -134,7 +135,7 @@ export function useRoom(code: string): UseRoom {
         { event: "*", schema: "public", table: ROOMS_TABLE, filter: `id=eq.${code}` },
         (payload) => {
           const row = payload.new as RoomRow | undefined;
-          if (row?.state) setState(row.state);
+          if (row?.state) setState(normalizeState(row.state));
         }
       )
       .on("presence", { event: "sync" }, () => {
@@ -181,7 +182,9 @@ export function useRoom(code: string): UseRoom {
         .select("state")
         .eq("id", code)
         .maybeSingle();
-      const base = (data?.state as GameState) ?? stateRef.current ?? initialState();
+      const base = data?.state
+        ? normalizeState(data.state)
+        : stateRef.current ?? initialState();
       const next = addPlayer(base, id, trimmed);
       setState(next);
       const { error: upErr } = await supabase
