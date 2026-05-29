@@ -12,7 +12,7 @@ A real-time **multiplayer** game: join a room, take turns calling numbers, and r
 - **Named players** with stable per-player neon colors & avatars
 - **Turn-based "chance by chance"** play — each player has their own 5×5 card
 - Tap a number to **call** it; it marks on **everyone's** card (animated ✕)
-- **Caller attribution** — a "Called" log + per-cell badge show who called what
+- **Caller attribution** — a per-cell badge shows who called each number
 - Live **roster** with per-player line progress and a glowing turn indicator
 - Each completed line lights a **BINGO** letter; winning lines highlighted
 - **First to 5 lines wins** — winner announced on every screen + confetti + leaderboard
@@ -36,7 +36,6 @@ bingo/
 │   ├── RoomGame.tsx           # Orchestrates the turn-based room
 │   ├── JoinRoom.tsx           # Name-entry gate
 │   ├── PlayerList.tsx         # Roster + line progress + turn glow + winner
-│   ├── CalledLog.tsx          # History of who called which number
 │   ├── TurnBanner.tsx         # "Your turn" / "Waiting for X"
 │   ├── ChatPanel.tsx          # In-room chat + BingoBot messages
 │   ├── BingoBoard.tsx         # A player's 5×5 card
@@ -102,7 +101,7 @@ npm start
 2. **Enter your name** and join. Share the link so friends join the same room.
 3. Anyone presses **Start** — everyone is dealt their own 5×5 card (1–25).
 4. **Take turns**: on your turn, tap a number on your card to **call** it. It
-   marks on every player's card. Watch the **Called** log to see who called what.
+   marks on every player's card. Each marked cell shows the caller's badge.
 5. Complete a full **row, column, or diagonal** to light a BINGO letter.
    **First to 5 lines wins** — announced on every screen with confetti. 🎉
 6. **Play Again** for a fresh round, or back to the **Lobby**.
@@ -120,8 +119,8 @@ Players who open the **same room number** play together in real time:
    the next round (when players return to the lobby).
 3. **Chance by chance** — on your turn you tap a number on your card to **call**
    it. That number is marked on **every** player's card. The turn rotates.
-4. **Live attribution** — a "Called" log shows **who called which number**, and
-   each marked cell carries the caller's initial badge.
+4. **Live attribution** — each marked cell carries the caller's initial badge,
+   so you can see **who called which number**.
 5. **First to 5 lines wins** — the **winner is announced on every screen** with
    confetti and a final leaderboard.
 
@@ -210,7 +209,7 @@ vars in **Project → Settings → Environment Variables**, then redeploy.
   (optimistic + realtime echo), keeps a stable per-browser player identity in
   `localStorage`, and tracks presence for the online count.
 - `components/` — `JoinRoom` (name gate), `PlayerList` (roster + progress +
-  turn glow), `CalledLog` (who called what), `TurnBanner`, `BingoBoard`/
+  turn glow), `TurnBanner`, `ChatPanel` (chat + BingoBot), `BingoBoard`/
   `BingoCell` (your card), and `WinModal` (winner + leaderboard). Win detection
   & confetti run locally on each client from the shared state, so everyone
   celebrates together.

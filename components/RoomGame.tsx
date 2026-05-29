@@ -10,7 +10,6 @@ import BingoBoard, { CallerInfo } from "./BingoBoard";
 import WinModal from "./WinModal";
 import JoinRoom from "./JoinRoom";
 import PlayerList from "./PlayerList";
-import CalledLog from "./CalledLog";
 import TurnBanner from "./TurnBanner";
 import ChatPanel from "./ChatPanel";
 
@@ -254,7 +253,6 @@ export default function RoomGame({ code }: { code: string }) {
             />
             <div className="flex flex-col sm:flex-row lg:flex-col gap-4 w-full lg:w-auto">
               <PlayerList state={state} meId={clientId} currentId={current?.id ?? null} />
-              <CalledLog called={state.called} />
               <ChatPanel
                 messages={chat.messages}
                 meId={clientId}
