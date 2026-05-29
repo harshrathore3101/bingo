@@ -92,4 +92,69 @@ npm start
 
 ---
 
+## 👥 Multiplayer Rooms (Supabase Realtime)
+
+Players who open the **same room number** share one board. When any player
+crosses a cell, it crosses on **every** player's screen instantly. A live
+"players online" count is shown via Supabase presence.
+
+- Lobby: `/` — enter or create a room number
+- Game: `/room/<number>` — shareable link
+
+### Setup
+
+**1. Create a free Supabase project** at [supabase.com](https://supabase.com).
+
+**2. Create the `rooms` table + realtime + policies.** In the Supabase
+dashboard → **SQL Editor**, run:
+
+```sql
+-- Shared board state, one row per room
+create table public.rooms (
+  id         text primary key,          -- room code, e.g. "1234"
+  cells      jsonb not null,            -- 25 cells (the shared board)
+  started    boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+-- Enable Row Level Security and allow anonymous play
+alter table public.rooms enable row level security;
+
+create policy "rooms_select" on public.rooms for select using (true);
+create policy "rooms_insert" on public.rooms for insert with check (true);
+create policy "rooms_update" on public.rooms for update using (true);
+
+-- Broadcast row changes to all subscribers in real time
+alter publication supabase_realtime add table public.rooms;
+```
+
+> The permissive policies above are fine for a casual game. Tighten them if you
+> need stronger guarantees.
+
+**3. Add your keys.** Copy `.env.local.example` → `.env.local` and fill in:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-KEY
+```
+
+Find both in **Project Settings → API**. On **Vercel**, add the same two env
+vars in **Project → Settings → Environment Variables**, then redeploy.
+
+**4. Run it** and open `/room/1234` in two browsers/devices to see live sync.
+
+### How sync works
+
+- `lib/supabase.ts` — shared browser client (null-safe if env is missing).
+- `hooks/useRoom.ts` — reads/creates the room row, subscribes to Postgres
+  change events, writes the full board on each action (optimistic + realtime
+  echo), and tracks presence for the player count.
+- `components/RoomGame.tsx` — renders the shared board; win/confetti are derived
+  locally on each client from the shared state, so everyone celebrates together.
+
+If the env vars are absent, the lobby shows a setup warning and the rest of the
+UI still renders.
+
+---
+
 Built with ❤️ + neon glow.

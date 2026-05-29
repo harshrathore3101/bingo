@@ -1,0 +1,34 @@
+// ---------------------------------------------------------------------------
+// lib/supabase.ts
+// A single shared Supabase browser client used for realtime room sync.
+// Credentials come from public env vars (safe — the anon key is meant to be
+// exposed to the browser and is gated by Row Level Security policies).
+// ---------------------------------------------------------------------------
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import type { Cell } from "./bingo";
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+/** True only when both env vars are present, so the UI can show setup help. */
+export const isSupabaseConfigured = Boolean(url && anonKey);
+
+/**
+ * The client is `null` when env vars are missing so the app can still render
+ * (and show a friendly "configure Supabase" message) instead of crashing.
+ */
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(url!, anonKey!, {
+      realtime: { params: { eventsPerSecond: 20 } },
+    })
+  : null;
+
+/** Shape of a row in the `rooms` table. */
+export interface RoomRow {
+  id: string; // room code (e.g. "1234")
+  cells: Cell[]; // shared board state (jsonb)
+  started: boolean;
+  updated_at: string;
+}
+
+export const ROOMS_TABLE = "rooms";
