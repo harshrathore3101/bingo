@@ -8,7 +8,11 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Cell } from "./bingo";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Accept either the legacy "anon" key or the newer "publishable" key
+// (sb_publishable_...). Both are browser-safe and gated by RLS.
+const anonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 /** True only when both env vars are present, so the UI can show setup help. */
 export const isSupabaseConfigured = Boolean(url && anonKey);

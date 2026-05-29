@@ -137,6 +137,7 @@ alter publication supabase_realtime add table public.rooms;
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-KEY
 ```
+harshrathore3101
 
 Find both in **Project Settings → API**. On **Vercel**, add the same two env
 vars in **Project → Settings → Environment Variables**, then redeploy.
