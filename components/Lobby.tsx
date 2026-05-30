@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -32,6 +33,13 @@ export default function Lobby() {
       {/* Floating neon background blobs */}
       <div className="pointer-events-none absolute -top-20 -left-20 h-72 w-72 rounded-full bg-neon-purple/30 blur-3xl animate-float" />
       <div className="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-neon-blue/20 blur-3xl animate-float [animation-delay:2s]" />
+
+      <Link
+        href="/"
+        className="absolute top-5 left-5 text-white/50 hover:text-white text-sm"
+      >
+        ← Games
+      </Link>
 
       <motion.h1
         initial={{ opacity: 0, y: -20 }}

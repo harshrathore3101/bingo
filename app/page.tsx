@@ -1,6 +1,6 @@
-import Lobby from "@/components/Lobby";
+import GameSelect from "@/components/GameSelect";
 
-// The landing page is the multiplayer lobby where players join a room number.
+// Landing page: choose which game to play (BINGO or UNO).
 export default function Home() {
-  return <Lobby />;
+  return <GameSelect />;
 }
