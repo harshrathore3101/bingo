@@ -180,6 +180,20 @@ create policy "messages_select" on public.messages for select using (true);
 create policy "messages_insert" on public.messages for insert with check (true);
 
 alter publication supabase_realtime add table public.messages;
+
+-- ── UNO rooms (one jsonb blob holds the whole UNO room + game) ──────────
+create table if not exists public.uno_rooms (
+  id         text primary key,          -- room code
+  state      jsonb not null,            -- UnoRoom: members, settings, game
+  updated_at timestamptz not null default now()
+);
+
+alter table public.uno_rooms enable row level security;
+create policy "uno_select" on public.uno_rooms for select using (true);
+create policy "uno_insert" on public.uno_rooms for insert with check (true);
+create policy "uno_update" on public.uno_rooms for update using (true);
+
+alter publication supabase_realtime add table public.uno_rooms;
 ```
 
 > The permissive policies above are fine for a casual game. Tighten them if you
@@ -216,6 +230,37 @@ vars in **Project → Settings → Environment Variables**, then redeploy.
 
 If the env vars are absent, the lobby shows a setup warning and the rest of the
 UI still renders.
+
+---
+
+## 🃏 UNO (multiplayer)
+
+A real-time, turn-based multiplayer UNO at `/uno` → `/uno/<code>`.
+
+**Implemented**
+- Full **108-card deck**, deal 7, first-card rules
+- Play by color / number / symbol / wild; **Skip, Reverse** (2-player = Skip),
+  **Draw Two, Wild, Wild Draw Four**
+- **Draw → play-drawn → pass** flow with auto-reshuffle
+- **UNO call + catch** (2-card penalty), **Draw Four challenge** (offender draws
+  4 / challenger draws 6)
+- **House rules**: Stacking, 7-0, toggle Draw-Four challenge (host sets them)
+- Lobby with ready states + host controls; **2–10 players**; round scoring
+- Live sync, presence, win modal + leaderboard + confetti
+
+**Architecture & honest caveats**
+- `lib/uno.ts` — a **pure, fully-tested rules engine** (24 Vitest tests:
+  `npm test`). Every transition returns new state.
+- `lib/unoRoom.ts` — lobby/room wrapper + reducers; `hooks/useUnoRoom.ts` syncs
+  the whole room through the `uno_rooms` table (Supabase Realtime).
+- Because there's **no Node server**, the engine runs client-side and the full
+  state (including all hands) is synced to every client. The UI only renders
+  your own hand + opponents' counts, so casual players don't see others' cards —
+  but this is **not hard anti-cheat**. True server authority would need a Node
+  Socket.IO server or Postgres RPC (a future option).
+
+**Not yet built** (planned phases): Jump-In, turn timer, sound effects, richer
+card animations, spectator mode, persistent stats, and optional Google auth.
 
 ---
 

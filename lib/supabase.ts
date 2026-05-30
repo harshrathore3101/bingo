@@ -54,3 +54,12 @@ export interface ChatMessage {
 export const MESSAGES_TABLE = "messages";
 export const BOT_ID = "bot";
 export const BOT_NAME = "BingoBot";
+
+/** Row in the `uno_rooms` table — the whole UNO room/game lives in `state`. */
+export interface UnoRoomRow {
+  id: string; // room code
+  state: unknown; // UnoRoom (jsonb)
+  updated_at: string;
+}
+
+export const UNO_ROOMS_TABLE = "uno_rooms";

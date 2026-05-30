@@ -1,6 +1,6 @@
-import UnoComingSoon from "@/components/UnoComingSoon";
+import UnoEntry from "@/components/uno/UnoEntry";
 
-// UNO entry point (placeholder while the game is built out phase by phase).
+// UNO entry point: enter or create a room.
 export default function UnoPage() {
-  return <UnoComingSoon />;
+  return <UnoEntry />;
 }

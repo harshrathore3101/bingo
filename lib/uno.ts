@@ -123,6 +123,12 @@ export function topCard(state: UnoState): UnoCard {
   return state.discardPile[state.discardPile.length - 1];
 }
 
+/** Id of the player whose turn it is (null if the game is over). */
+export function currentPlayerId(state: UnoState): string | null {
+  if (state.phase !== "playing") return null;
+  return state.players[state.current]?.id ?? null;
+}
+
 /** Index `steps` players ahead of `from` in the current direction. */
 function step(state: UnoState, from: number, steps = 1): number {
   const n = state.players.length;
@@ -327,27 +333,19 @@ function applyEffect(
       break;
 
     case "draw2":
-      if (state.settings.stacking) {
-        state.pendingDraw += 2;
-        state.pendingDrawType = "draw2";
-        state.current = step(state, idx, 1); // next player must stack or draw
-      } else {
-        const target = step(state, idx, 1);
-        drawInto(state, target, 2, rng);
-        state.current = step(state, idx, 2); // target skipped
-      }
+      // The target resolves the penalty on their turn (drawCard advances past
+      // them). With stacking on they may instead play another Draw Two.
+      state.pendingDraw += 2;
+      state.pendingDrawType = "draw2";
+      state.current = step(state, idx, 1);
       break;
 
     case "wild4":
-      if (state.settings.stacking) {
-        state.pendingDraw += 4;
-        state.pendingDrawType = "draw4";
-        state.current = step(state, idx, 1);
-      } else {
-        const target = step(state, idx, 1);
-        drawInto(state, target, 4, rng);
-        state.current = step(state, idx, 2);
-      }
+      // Same pending flow — this also gives the target a window to challenge
+      // (or, with stacking, to play another Wild Draw Four) before drawing.
+      state.pendingDraw += 4;
+      state.pendingDrawType = "draw4";
+      state.current = step(state, idx, 1);
       break;
 
     case "number":
@@ -400,6 +398,7 @@ export function drawCard(
     drawInto(state, idx, state.pendingDraw, rng);
     state.pendingDraw = 0;
     state.pendingDrawType = null;
+    state.lastWildFourLegal = null; // penalty accepted → no challenge
     state.justDrew = null;
     state.current = step(state, idx, 1); // penalty resolved → turn passes
     return { ok: true, state };
