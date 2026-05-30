@@ -5,12 +5,12 @@ import { motion } from "framer-motion";
 
 // Build phases for the full multiplayer UNO game, shown on the placeholder so
 // progress is transparent. Updated as each phase lands.
-const ROADMAP: Array<{ phase: string; items: string; status: "next" | "planned" }> = [
-  { phase: "1 · Rules engine", items: "108-card deck, deal, play validation, action/wild cards, scoring", status: "next" },
-  { phase: "2 · Realtime server", items: "Server-authoritative game state, live sync, reconnect", status: "planned" },
-  { phase: "3 · Rooms & lobby", items: "Create/join/quick-play, 2–10 players, host settings", status: "planned" },
-  { phase: "4 · House rules", items: "Stacking, jump-in, 7-0, challenge Draw Four", status: "planned" },
-  { phase: "5 · Polish", items: "Animations, sound, spectator, stats, auth", status: "planned" },
+const ROADMAP: Array<{ phase: string; items: string; status: "done" | "next" | "planned" }> = [
+  { phase: "1 · Rules engine", items: "108-card deck, deal, play/draw rules, action/wild cards, challenge, scoring", status: "done" },
+  { phase: "2 · Realtime room", items: "Supabase-synced game state, turns, reconnect", status: "next" },
+  { phase: "3 · Game table UI", items: "Hand fan, draw/discard piles, players, color picker", status: "planned" },
+  { phase: "4 · House rules", items: "Stacking & 7-0 (engine done), jump-in, turn timer", status: "planned" },
+  { phase: "5 · Polish", items: "Animations, sound, spectator, stats, auth, tests", status: "planned" },
 ];
 
 const UNO_COLORS = ["#ff4136", "#0074d9", "#2ecc40", "#ffdc00"];
@@ -60,14 +60,24 @@ export default function UnoComingSoon() {
             <li key={r.phase} className="flex items-start gap-3">
               <span
                 className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-                  r.status === "next" ? "bg-neon-green animate-pulse" : "bg-white/20"
+                  r.status === "done"
+                    ? "bg-neon-green"
+                    : r.status === "next"
+                      ? "bg-neon-yellow animate-pulse"
+                      : "bg-white/20"
                 }`}
+                style={r.status === "next" ? { background: "#fdfd00" } : undefined}
               />
               <div>
                 <p className="font-semibold text-white">
                   {r.phase}
+                  {r.status === "done" && (
+                    <span className="ml-2 text-[10px] text-neon-green">✓ DONE</span>
+                  )}
                   {r.status === "next" && (
-                    <span className="ml-2 text-[10px] text-neon-green">IN PROGRESS</span>
+                    <span className="ml-2 text-[10px]" style={{ color: "#fdfd00" }}>
+                      IN PROGRESS
+                    </span>
                   )}
                 </p>
                 <p className="text-cyan-100/60 text-sm">{r.items}</p>
